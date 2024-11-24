@@ -1,0 +1,163 @@
+import network
+import socket
+import time
+from machine import Pin
+
+# Wi-Fi hálózat beállításai
+SSID = 'WiFi_nev'
+PASSWORD = 'WiFi_jelszo'
+
+# LED-ek inicializálása
+led_green = Pin(15, Pin.OUT)  # Zöld LED (prím szám esetén)
+led_red = Pin(16, Pin.OUT)    # Piros LED (nem prím esetén)
+
+def connect_to_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print("Csatlakozás a WiFi hálózathoz...")
+        wlan.connect(SSID, PASSWORD)
+        while not wlan.isconnected():
+            time.sleep(1)
+    print("Csatlakozva:", wlan.ifconfig())
+    return wlan.ifconfig()[0]  # IP-cím visszaadása
+
+def calculate_divisors(number):
+    # Egy szám osztóinak kiszámítása
+    return [i for i in range(1, number + 1) if number % i == 0]
+
+def is_prime(number):
+    # Ellenőrzés: prím szám-e
+    if number < 2:
+        return False
+    return len(calculate_divisors(number)) == 2
+
+def update_leds(prime):
+    # LED-ek állapotának frissítése
+    if prime:
+        led_green.on()
+        led_red.off()
+    else:
+        led_green.off()
+        led_red.on()
+
+def generate_html(number=None, divisors=None, prime=None):
+    # HTML generálása prím ellenőrzéssel
+    if number is not None and divisors is not None and prime is not None:
+        divisors_count = len(divisors)
+        divisors_list = ", ".join(map(str, divisors))
+        prime_status = "Igen, prím szám." if prime else "Nem, nem prím szám."
+        number_style = "color: red;" if prime else "color: black;"
+        result_section = f"""
+            <p>A szám: <span id="input-number" style="{number_style}">{number}</span></p>
+            <p>Osztók száma: <span id="divisors-count">{divisors_count}</span></p>
+            <p>Osztók: <span id="divisors-list">{divisors_list}</span></p>
+            <p>Prím szám: <span id="prime-status">{prime_status}</span></p>
+        """
+    else:
+        result_section = """
+            <p>Adjon meg egy számot, majd kattintson a 'Keresés' gombra!</p>
+        """
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="hu">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Osztók keresése</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }}
+            h1 {{
+                text-align: center;
+            }}
+            form, .result {{
+                margin: 20px auto;
+                max-width: 500px;
+                text-align: center;
+                border: 1px solid #ddd;
+                padding: 20px;
+                border-radius: 10px;
+            }}
+            label, input, p {{
+                margin: 10px 0;
+                display: block;
+                font-size: 16px;
+            }}
+            input[type="number"], input[type="submit"] {{
+                padding: 10px;
+                font-size: 16px;
+                width: 90%;
+            }}
+            input[type="submit"] {{
+                cursor: pointer;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 5px;
+            }}
+            .result {{
+                background-color: #f9f9f9;
+            }}
+            .result p {{
+                font-size: 18px;
+                font-weight: bold;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Osztók keresése</h1>
+        <form action="/" method="get">
+            <label for="number">Kérjük adjon meg egy számot:</label>
+            <input type="number" id="number" name="number" required>
+            <input type="submit" value="Keresés">
+        </form>
+        <hr>
+        <div class="result">
+            {result_section}
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+def start_webserver(ip):
+    # Webszerver indítása
+    addr = (ip, 80)
+    server = socket.socket()
+    server.bind(addr)
+    server.listen(1)
+    print("Szerver fut:", ip)
+    
+    while True:
+        cl, addr = server.accept()
+        print("Kapcsolat érkezett:", addr)
+        request = cl.recv(1024).decode()
+        
+        # Kérés elemzése
+        number = None
+        divisors = None
+        prime = None
+        if "GET /?number=" in request:
+            try:
+                param_start = request.find("/?number=") + 9
+                param_end = request.find(" ", param_start)
+                number = int(request[param_start:param_end])
+                divisors = calculate_divisors(number)
+                prime = is_prime(number)
+                update_leds(prime)  # LED-ek frissítése
+            except Exception as e:
+                print("Hiba történt:", e)
+
+        # HTML válasz generálása
+        response = generate_html(number, divisors, prime)
+        cl.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n")
+        cl.send(response)
+        cl.close()
+
+# Program futtatása
+ip_address = connect_to_wifi()
+start_webserver(ip_address)
