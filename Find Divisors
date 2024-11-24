@@ -3,6 +3,7 @@ import socket
 import time
 from machine import Pin
 
+#
 # Wi-Fi hálózat beállításai
 SSID = 'WiFi_nev'
 PASSWORD = 'WiFi_jelszo'
