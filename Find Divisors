@@ -5,12 +5,12 @@ from machine import Pin
 
 #
 # Wi-Fi hálózat beállításai
-SSID = 'WiFi_nev'
-PASSWORD = 'WiFi_jelszo'
+SSID = 'WiFi_name'
+PASSWORD = 'WiFi_password'
 
 # LED-ek inicializálása
 led_green = Pin(15, Pin.OUT)  # Zöld LED (prím szám esetén)
-led_red = Pin(16, Pin.OUT)    # Piros LED (nem prím esetén)
+led_red = Pin(14, Pin.OUT)    # Piros LED (nem prím esetén)
 
 def connect_to_wifi():
     wlan = network.WLAN(network.STA_IF)
