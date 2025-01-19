@@ -42,9 +42,13 @@ def update_leds(prime):
         led_green.off()
         led_red.on()
 
-def generate_html(number=None, divisors=None, prime=None):
+def generate_html(number=None, divisors=None, prime=None, error=None):
     # HTML generálása prím ellenőrzéssel
-    if number is not None and divisors is not None and prime is not None:
+    if error:
+        result_section = f"""
+            <p style="color: red;">{error}</p>
+        """
+    elif number is not None and divisors is not None and prime is not None:
         divisors_count = len(divisors)
         divisors_list = ", ".join(map(str, divisors))
         prime_status = "Igen, prím szám." if prime else "Nem, nem prím szám."
@@ -142,19 +146,23 @@ def start_webserver(ip):
         number = None
         divisors = None
         prime = None
+        error = None
         if "GET /?number=" in request:
             try:
                 param_start = request.find("/?number=") + 9
                 param_end = request.find(" ", param_start)
                 number = int(request[param_start:param_end])
-                divisors = calculate_divisors(number)
-                prime = is_prime(number)
-                update_leds(prime)  # LED-ek frissítése
+                if number > 1000000:
+                    error = "A megadott szám túl nagy! Kérjük, adjon meg egy 1 milliónál kisebb számot."
+                else:
+                    divisors = calculate_divisors(number)
+                    prime = is_prime(number)
+                    update_leds(prime)  # LED-ek frissítése
             except Exception as e:
                 print("Hiba történt:", e)
 
         # HTML válasz generálása
-        response = generate_html(number, divisors, prime)
+        response = generate_html(number, divisors, prime, error)
         cl.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n")
         cl.send(response)
         cl.close()
